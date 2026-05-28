@@ -155,6 +155,15 @@ Examples:
 - "party хийх гэж байна" → ["Drinks", "Snacks", "Alcohol"]
 - "цуйван хиймээр" → ["Meat", "Cooking", "Vegetables"]
 - "зүгээр л snack авмаар" → ["Snacks", "Drinks"]
+- "архи уумаар" or "arhi uumaar" → ["Alcohol", "Drinks", "Snacks"]
+- "пиво авмаар" or "beer" → ["Alcohol", "Drinks", "Snacks"]
+- "ундаа авмаар" → ["Drinks"]
+- "өглөөний хоол" → ["Dairy", "Bakery", "Cooking"]
+- "оройн хоол хийх" → ["Meat", "Vegetables", "Cooking"]
+
+IMPORTANT: Understand Mongolian in both Cyrillic AND Latin transliteration.
+"arhi" = "архи" = alcohol. "uumaar" = "уумаар" = want to drink.
+"idmeer" = "идмээр" = want to eat.
 
 Return ONLY the JSON array, nothing else.`;
 
