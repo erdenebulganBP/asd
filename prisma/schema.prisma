@@ -1,0 +1,73 @@
+generator client {
+  provider = "prisma-client-js"
+}
+
+datasource db {
+  provider  = "postgresql"
+  url       = env("DATABASE_URL")           // pooled — used for all queries at runtime
+  directUrl = env("DATABASE_URL_UNPOOLED")  // direct — used only for prisma migrate
+}
+
+model User {
+  id        Int      @id @default(autoincrement())
+  email     String   @unique
+  name      String
+  fcmToken  String?
+  latitude  Float?
+  longitude Float?
+  createdAt DateTime @default(now())
+
+  orders    Order[]
+}
+
+model Product {
+  id       Int    @id @default(autoincrement())
+  name     String
+  category String
+  price    Float
+
+  discounts  Discount[]
+  orderItems OrderItem[]
+}
+
+model Store {
+  id        Int    @id @default(autoincrement())
+  name      String
+  latitude  Float
+  longitude Float
+  address   String
+
+  discounts Discount[]
+}
+
+model Discount {
+  id              Int      @id @default(autoincrement())
+  productId       Int
+  storeId         Int
+  discountedPrice Float
+  discountPercent Float
+  startsAt        DateTime
+  endsAt          DateTime
+
+  product Product @relation(fields: [productId], references: [id])
+  store   Store   @relation(fields: [storeId], references: [id])
+}
+
+model Order {
+  id        Int       @id @default(autoincrement())
+  userId    Int
+  createdAt DateTime  @default(now())
+
+  user  User        @relation(fields: [userId], references: [id])
+  items OrderItem[]
+}
+
+model OrderItem {
+  id        Int @id @default(autoincrement())
+  orderId   Int
+  productId Int
+  quantity  Int
+
+  order   Order   @relation(fields: [orderId], references: [id])
+  product Product @relation(fields: [productId], references: [id])
+}

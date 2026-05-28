@@ -1,0 +1,219 @@
+{
+  "info": {
+    "name": "Smart Supermarket API",
+    "schema": "https://schema.getpostman.com/json/collection/v2.1.0/collection.json"
+  },
+  "variable": [
+    { "key": "base", "value": "http://localhost:3000" }
+  ],
+  "item": [
+    {
+      "name": "Users",
+      "item": [
+        {
+          "name": "Create User",
+          "request": {
+            "method": "POST",
+            "url": "{{base}}/users",
+            "header": [{ "key": "Content-Type", "value": "application/json" }],
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"name\": \"Test User\",\n  \"email\": \"test@example.com\",\n  \"latitude\": 47.9185,\n  \"longitude\": 106.9177,\n  \"fcmToken\": \"fcm_token_test\"\n}"
+            }
+          }
+        },
+        {
+          "name": "Get All Users",
+          "request": {
+            "method": "GET",
+            "url": "{{base}}/users"
+          }
+        },
+        {
+          "name": "Get User by ID",
+          "request": {
+            "method": "GET",
+            "url": "{{base}}/users/1"
+          }
+        },
+        {
+          "name": "Update User Location",
+          "request": {
+            "method": "PATCH",
+            "url": "{{base}}/users/1/location",
+            "header": [{ "key": "Content-Type", "value": "application/json" }],
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"latitude\": 47.9185,\n  \"longitude\": 106.9177\n}"
+            }
+          }
+        },
+        {
+          "name": "Get Purchase History",
+          "request": {
+            "method": "GET",
+            "url": "{{base}}/users/1/history"
+          }
+        }
+      ]
+    },
+    {
+      "name": "Products",
+      "item": [
+        {
+          "name": "Get All Products",
+          "request": {
+            "method": "GET",
+            "url": "{{base}}/products"
+          }
+        },
+        {
+          "name": "Get Products by Category",
+          "request": {
+            "method": "GET",
+            "url": "{{base}}/products?category=Drinks"
+          }
+        },
+        {
+          "name": "Create Product",
+          "request": {
+            "method": "POST",
+            "url": "{{base}}/products",
+            "header": [{ "key": "Content-Type", "value": "application/json" }],
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"name\": \"Red Bull 250ml\",\n  \"category\": \"Drinks\",\n  \"price\": 2.5\n}"
+            }
+          }
+        }
+      ]
+    },
+    {
+      "name": "Stores",
+      "item": [
+        {
+          "name": "Get All Stores",
+          "request": {
+            "method": "GET",
+            "url": "{{base}}/stores"
+          }
+        },
+        {
+          "name": "Get Nearby Stores (John's location)",
+          "request": {
+            "method": "GET",
+            "url": {
+              "raw": "{{base}}/stores/nearby?lat=47.9185&lon=106.9177&radius=500",
+              "query": [
+                { "key": "lat", "value": "47.9185" },
+                { "key": "lon", "value": "106.9177" },
+                { "key": "radius", "value": "500" }
+              ]
+            }
+          }
+        }
+      ]
+    },
+    {
+      "name": "Discounts",
+      "item": [
+        {
+          "name": "Get All Discounts",
+          "request": {
+            "method": "GET",
+            "url": "{{base}}/discounts"
+          }
+        },
+        {
+          "name": "Get Active Discounts",
+          "request": {
+            "method": "GET",
+            "url": "{{base}}/discounts/active"
+          }
+        },
+        {
+          "name": "Get Active Discounts by Store",
+          "request": {
+            "method": "GET",
+            "url": "{{base}}/discounts/active?storeId=1"
+          }
+        },
+        {
+          "name": "Create Discount",
+          "request": {
+            "method": "POST",
+            "url": "{{base}}/discounts",
+            "header": [{ "key": "Content-Type", "value": "application/json" }],
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"productId\": 2,\n  \"storeId\": 1,\n  \"discountedPrice\": 2.0,\n  \"discountPercent\": 37,\n  \"startsAt\": \"2026-05-28T00:00:00Z\",\n  \"endsAt\": \"2026-06-05T00:00:00Z\"\n}"
+            }
+          }
+        }
+      ]
+    },
+    {
+      "name": "Recommendations",
+      "item": [
+        {
+          "name": "Generate Recommendations (John, nearby)",
+          "request": {
+            "method": "POST",
+            "url": "{{base}}/recommendations/generate",
+            "header": [{ "key": "Content-Type", "value": "application/json" }],
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"userId\": 1,\n  \"latitude\": 47.9185,\n  \"longitude\": 106.9177,\n  \"currentBasket\": []\n}"
+            }
+          }
+        },
+        {
+          "name": "Generate Recommendations (with basket)",
+          "request": {
+            "method": "POST",
+            "url": "{{base}}/recommendations/generate",
+            "header": [{ "key": "Content-Type", "value": "application/json" }],
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"userId\": 1,\n  \"latitude\": 47.9185,\n  \"longitude\": 106.9177,\n  \"currentBasket\": [2, 3]\n}"
+            }
+          }
+        }
+      ]
+    },
+    {
+      "name": "Notifications",
+      "item": [
+        {
+          "name": "Send Test Notification (mock)",
+          "request": {
+            "method": "POST",
+            "url": "{{base}}/notifications/send",
+            "header": [{ "key": "Content-Type", "value": "application/json" }],
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"fcmToken\": \"fcm_mock_token_123\",\n  \"title\": \"Coca-Cola Nearby Discount\",\n  \"body\": \"2L Coca-Cola is 25% off at Emart, 300m away.\",\n  \"data\": {\n    \"storeId\": \"1\",\n    \"productId\": \"1\"\n  }\n}"
+            }
+          }
+        }
+      ]
+    },
+    {
+      "name": "AI",
+      "item": [
+        {
+          "name": "AI Recommend (direct)",
+          "request": {
+            "method": "POST",
+            "url": "{{base}}/ai/recommend",
+            "header": [{ "key": "Content-Type", "value": "application/json" }],
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"purchaseHistory\": [\"Coca-Cola\", \"Doritos\", \"Shin Ramyun\"],\n  \"currentBasket\": [\"Doritos\"],\n  \"nearbyDiscounts\": [\"Coca-Cola 25% off at Emart\", \"Shin Ramyun 30% off at CU Store\"]\n}"
+            }
+          }
+        }
+      ]
+    }
+  ]
+}

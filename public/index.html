@@ -1,0 +1,562 @@
+<!DOCTYPE html>
+<html lang="mn">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Smart Supermarket — Mongolian AI Assistant</title>
+    <script src="https://cdn.tailwindcss.com"></script>
+</head>
+<body class="bg-gray-50 min-h-screen">
+    <div id="app" class="max-w-7xl mx-auto p-4">
+        <!-- Header -->
+        <header class="flex justify-between items-center mb-6 bg-white p-4 rounded-xl shadow-sm">
+            <h1 class="text-2xl font-bold text-blue-600">🛒 Smart Supermarket</h1>
+            <div class="flex items-center gap-3">
+                <button onclick="triggerNearby()" id="nearby-btn" class="px-3 py-2 bg-green-100 text-green-700 rounded-lg hover:bg-green-200 transition text-sm font-bold">
+                    📍 Ойрхон байна
+                </button>
+                <div class="text-sm text-gray-500">User: <span class="font-bold">John</span></div>
+                <button onclick="toggleBasket()" class="relative p-2 bg-gray-100 rounded-lg hover:bg-gray-200 transition">
+                    🧺 Сагс
+                    <span id="basket-count" class="hidden absolute -top-2 -right-2 bg-red-500 text-white text-[10px] rounded-full h-5 w-5 flex items-center justify-center">0</span>
+                </button>
+            </div>
+        </header>
+
+        <!-- Tabs -->
+        <div class="flex gap-2 mb-6">
+            <button onclick="switchTab('shop')" id="tab-shop" class="px-4 py-2 rounded-lg font-bold text-sm bg-blue-600 text-white">🛍 Дэлгүүр</button>
+            <button onclick="switchTab('history')" id="tab-history" class="px-4 py-2 rounded-lg font-bold text-sm bg-gray-200 text-gray-600 hover:bg-gray-300">📋 Түүх</button>
+            <button onclick="switchTab('deals')" id="tab-deals" class="px-4 py-2 rounded-lg font-bold text-sm bg-gray-200 text-gray-600 hover:bg-gray-300">🔥 Миний хямдрал</button>
+        </div>
+
+        <!-- TAB: Shop -->
+        <div id="page-shop" class="grid grid-cols-1 lg:grid-cols-3 gap-6">
+            <div class="lg:col-span-2 space-y-6">
+                <section>
+                    <div class="flex justify-between items-center mb-4">
+                        <h2 class="text-xl font-bold">Барааны жагсаалт</h2>
+                        <div id="health-status" class="text-xs px-2 py-1 rounded-full bg-gray-200 text-gray-600">Checking...</div>
+                    </div>
+                    <div id="product-list" class="grid grid-cols-2 md:grid-cols-3 gap-3">
+                        <div class="animate-pulse bg-gray-200 h-36 rounded-xl"></div>
+                        <div class="animate-pulse bg-gray-200 h-36 rounded-xl"></div>
+                        <div class="animate-pulse bg-gray-200 h-36 rounded-xl"></div>
+                    </div>
+                </section>
+                <section>
+                    <h2 class="text-xl font-bold mb-4">Танд зориулсан санал (AI)</h2>
+                    <div id="rec-list" class="space-y-3">
+                        <p class="text-sm text-gray-400">Тооцоолж байна...</p>
+                    </div>
+                </section>
+            </div>
+
+            <!-- Sidebar: Chatbot -->
+            <div class="lg:col-span-1">
+                <div class="bg-white rounded-2xl shadow-lg border border-gray-100 flex flex-col h-[560px]">
+                    <div class="p-3 border-b bg-blue-600 text-white rounded-t-2xl flex justify-between items-center">
+                        <div>
+                            <h3 class="font-bold text-sm">🇲🇳 AI Туслах</h3>
+                            <p class="text-[10px] opacity-80">Худалдан авалтад тусалъя</p>
+                        </div>
+                        <button onclick="clearChat()" class="text-[10px] bg-blue-500 hover:bg-blue-400 px-2 py-1 rounded-lg">Шинэ чат</button>
+                    </div>
+                    <div id="chat-window" class="flex-1 overflow-y-auto p-3 space-y-3 text-sm bg-gray-50">
+                        <div class="bg-white p-3 rounded-lg shadow-sm border border-gray-100">
+                            Сайн байна уу! Би таны худалдан авалтын туслах. Юу авах вэ? (Үдэшлэг, оройн хоол г.м)
+                        </div>
+                    </div>
+                    <div id="chat-suggestions" class="px-3 py-2 flex flex-wrap gap-1"></div>
+                    <div class="p-3 border-t bg-white rounded-b-2xl">
+                        <form id="chat-form" class="flex gap-2">
+                            <input type="text" id="chat-input" placeholder="Мессеж бичих..." class="flex-1 border rounded-xl px-3 py-2 focus:ring-2 focus:ring-blue-500 outline-none text-sm">
+                            <button type="submit" class="bg-blue-600 text-white px-3 py-2 rounded-xl hover:bg-blue-700 transition">➔</button>
+                        </form>
+                    </div>
+                </div>
+            </div>
+        </div>
+
+        <!-- TAB: History -->
+        <div id="page-history" class="hidden">
+            <div class="bg-white rounded-2xl shadow-sm p-6">
+                <h2 class="text-xl font-bold mb-4">📋 Худалдан авалтын түүх</h2>
+                <div id="history-list" class="space-y-4">
+                    <p class="text-gray-400">Ачааллаж байна...</p>
+                </div>
+            </div>
+        </div>
+
+        <!-- TAB: My Deals (history items that are currently discounted) -->
+        <div id="page-deals" class="hidden">
+            <div class="bg-white rounded-2xl shadow-sm p-6">
+                <h2 class="text-xl font-bold mb-2">🔥 Миний хямдрал</h2>
+                <p class="text-sm text-gray-500 mb-4">Таны өмнө авсан бараанууд одоо хямдарсан байна!</p>
+                <div id="deals-list" class="space-y-3">
+                    <p class="text-gray-400">Ачааллаж байна...</p>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <!-- Nearby Modal -->
+    <div id="nearby-modal" class="hidden fixed inset-0 bg-black bg-opacity-50 flex items-center justify-center p-4 z-50">
+        <div class="bg-white rounded-2xl max-w-lg w-full p-6 max-h-[80vh] overflow-y-auto">
+            <div class="flex justify-between items-center mb-4">
+                <h3 class="text-xl font-bold">📍 Ойрхон дэлгүүрүүд</h3>
+                <button onclick="closeNearby()" class="text-gray-400 hover:text-gray-600 text-xl">✕</button>
+            </div>
+            <p class="text-sm text-gray-500 mb-4">Таны түүхэнд байгаа бараанууд ойрхон дэлгүүрт хямдарсан байна:</p>
+            <div id="nearby-results" class="space-y-3"></div>
+        </div>
+    </div>
+
+    <!-- Basket Modal -->
+    <div id="basket-modal" class="hidden fixed inset-0 bg-black bg-opacity-50 flex items-center justify-center p-4 z-50">
+        <div class="bg-white rounded-2xl max-w-md w-full p-6">
+            <div class="flex justify-between items-center mb-4">
+                <h3 class="text-xl font-bold">🧺 Таны сагс</h3>
+                <button onclick="toggleBasket()" class="text-gray-400 hover:text-gray-600 text-xl">✕</button>
+            </div>
+            <div id="basket-items" class="space-y-3 mb-6 max-h-60 overflow-y-auto">
+                <p class="text-gray-400 text-center py-4">Сагс хоосон байна.</p>
+            </div>
+            <div class="border-t pt-4">
+                <div class="flex justify-between font-bold text-lg mb-4">
+                    <span>Нийт:</span>
+                    <span id="basket-total">0 ₮</span>
+                </div>
+                <button onclick="checkout()" class="w-full bg-green-600 text-white py-3 rounded-xl font-bold hover:bg-green-700 transition">
+                    ✓ Захиалах
+                </button>
+            </div>
+        </div>
+    </div>
+
+    <script>
+        let basket = [];
+        const userId = 1;
+        const mockLocation = { lat: 47.9185, lon: 106.9177 };
+        let allProducts = [];
+        let purchaseHistory = [];
+        let activeDiscounts = [];
+
+        // ─── INIT ───
+        async function init() {
+            updateHealth();
+            await fetchProducts();
+            fetchRecommendations();
+            fetchHistory();
+            fetchMyDeals();
+        }
+
+        // ─── TABS ───
+        function switchTab(tab) {
+            ['shop', 'history', 'deals'].forEach(t => {
+                document.getElementById('page-' + t).classList.toggle('hidden', t !== tab);
+                const btn = document.getElementById('tab-' + t);
+                btn.className = t === tab
+                    ? 'px-4 py-2 rounded-lg font-bold text-sm bg-blue-600 text-white'
+                    : 'px-4 py-2 rounded-lg font-bold text-sm bg-gray-200 text-gray-600 hover:bg-gray-300';
+            });
+            if (tab === 'history') fetchHistory();
+            if (tab === 'deals') fetchMyDeals();
+        }
+
+        // ─── HEALTH ───
+        async function updateHealth() {
+            try {
+                const res = await fetch('/health');
+                const data = await res.json();
+                const el = document.getElementById('health-status');
+                el.innerText = data.db === 'connected' ? '● Connected' : '○ Offline';
+                el.className = `text-[10px] px-2 py-1 rounded-full ${data.db === 'connected' ? 'bg-green-100 text-green-600' : 'bg-red-100 text-red-600'}`;
+            } catch (e) {
+                document.getElementById('health-status').innerText = '○ Error';
+            }
+        }
+
+        // ─── PRODUCTS ───
+        async function fetchProducts() {
+            try {
+                const res = await fetch('/products');
+                allProducts = await res.json();
+                renderProducts(allProducts);
+            } catch(e) { console.error(e); }
+        }
+
+        function renderProducts(products) {
+            const container = document.getElementById('product-list');
+            container.innerHTML = products.map(p => `
+                <div class="bg-white p-3 rounded-xl shadow-sm border border-gray-100 hover:shadow-md transition">
+                    <div class="text-[10px] text-blue-500 font-bold mb-1">${p.category}</div>
+                    <div class="font-bold text-sm text-gray-800 mb-2 truncate">${p.name}</div>
+                    <div class="flex justify-between items-center">
+                        <span class="font-bold">${p.price.toLocaleString()} ₮</span>
+                        <button onclick="addToBasket(${p.id}, '${p.name.replace(/'/g, "\\'")}', ${p.price})" class="bg-blue-50 text-blue-600 px-2 py-1 rounded-lg hover:bg-blue-600 hover:text-white transition text-xs font-bold">
+                            + Авах
+                        </button>
+                    </div>
+                </div>
+            `).join('');
+        }
+
+        // ─── RECOMMENDATIONS ───
+        async function fetchRecommendations() {
+            try {
+                const res = await fetch('/recommendations/generate', {
+                    method: 'POST',
+                    headers: { 'Content-Type': 'application/json' },
+                    body: JSON.stringify({
+                        userId,
+                        latitude: mockLocation.lat,
+                        longitude: mockLocation.lon,
+                        currentBasket: basket.map(b => b.id)
+                    })
+                });
+                const data = await res.json();
+                const container = document.getElementById('rec-list');
+                
+                if (!data.scoredProducts || data.scoredProducts.length === 0) {
+                    container.innerHTML = '<p class="text-sm text-gray-400">Одоогоор санал болгох бараа алга.</p>';
+                    return;
+                }
+
+                container.innerHTML = data.scoredProducts.slice(0, 5).map(r => `
+                    <div class="bg-gradient-to-r from-blue-50 to-white border border-blue-100 p-3 rounded-xl flex gap-3 items-center">
+                        <div class="bg-blue-600 text-white text-[10px] font-bold px-2 py-1 rounded-lg shrink-0">${r.score}</div>
+                        <div class="flex-1 min-w-0">
+                            <div class="font-bold text-sm truncate">${r.product.name}</div>
+                            <div class="text-xs text-gray-500 truncate">${r.reason}</div>
+                            ${r.discount ? `<span class="text-[10px] font-bold text-red-600">🔥 ${r.discount.discountPercent}% OFF</span>` : ''}
+                        </div>
+                        <button onclick="addToBasket(${r.product.id}, '${r.product.name.replace(/'/g, "\\'")}', ${r.product.price})" class="bg-blue-600 text-white px-3 py-1.5 rounded-lg text-xs font-bold hover:bg-blue-700 transition shrink-0">
+                            Авах
+                        </button>
+                    </div>
+                `).join('');
+            } catch (e) { console.error(e); }
+        }
+
+        // ─── PURCHASE HISTORY ───
+        async function fetchHistory() {
+            try {
+                const res = await fetch(`/users/${userId}`);
+                const user = await res.json();
+                const container = document.getElementById('history-list');
+
+                if (!user.orders || user.orders.length === 0) {
+                    container.innerHTML = '<p class="text-gray-400">Худалдан авалт байхгүй.</p>';
+                    return;
+                }
+
+                // Build frequency map
+                const freq = {};
+                user.orders.forEach(order => {
+                    order.items.forEach(item => {
+                        if (!freq[item.productId]) {
+                            freq[item.productId] = { product: item.product, totalQty: 0, orderCount: 0 };
+                        }
+                        freq[item.productId].totalQty += item.quantity;
+                        freq[item.productId].orderCount++;
+                    });
+                });
+                purchaseHistory = Object.values(freq).sort((a, b) => b.totalQty - a.totalQty);
+
+                container.innerHTML = `
+                    <div class="mb-4 p-3 bg-blue-50 rounded-lg">
+                        <div class="text-sm font-bold text-blue-700">Нийт ${user.orders.length} захиалга</div>
+                        <div class="text-xs text-blue-500">${Object.keys(freq).length} төрлийн бараа авсан</div>
+                    </div>
+                    <h3 class="font-bold text-sm mb-2">Хамгийн их авдаг бараа:</h3>
+                    <div class="space-y-2">
+                        ${purchaseHistory.map(h => `
+                            <div class="flex items-center justify-between p-3 bg-gray-50 rounded-lg">
+                                <div class="flex-1">
+                                    <div class="font-bold text-sm">${h.product.name}</div>
+                                    <div class="text-xs text-gray-500">${h.product.category} · ${h.totalQty} ширхэг · ${h.orderCount} удаа</div>
+                                </div>
+                                <button onclick="addToBasket(${h.product.id}, '${h.product.name.replace(/'/g, "\\'")}', ${h.product.price})" class="bg-blue-100 text-blue-600 px-3 py-1 rounded-lg text-xs font-bold hover:bg-blue-600 hover:text-white transition">
+                                    Дахин авах
+                                </button>
+                            </div>
+                        `).join('')}
+                    </div>
+                    <h3 class="font-bold text-sm mt-6 mb-2">Захиалгууд (сүүлийн):</h3>
+                    <div class="space-y-2">
+                        ${user.orders.map((o, i) => `
+                            <div class="p-3 border rounded-lg">
+                                <div class="flex justify-between text-xs text-gray-500 mb-1">
+                                    <span>Захиалга #${o.id}</span>
+                                    <span>${new Date(o.createdAt).toLocaleDateString('mn-MN')}</span>
+                                </div>
+                                <div class="text-sm">${o.items.map(it => `${it.product.name} x${it.quantity}`).join(', ')}</div>
+                            </div>
+                        `).join('')}
+                    </div>
+                `;
+            } catch(e) { console.error(e); }
+        }
+
+        // ─── MY DEALS: history items that are currently discounted ───
+        async function fetchMyDeals() {
+            try {
+                // Get user history
+                const histRes = await fetch(`/users/${userId}/history`);
+                const history = await histRes.json();
+                const historyProductIds = history.map(h => h.product.id);
+
+                // Get active discounts
+                const discRes = await fetch('/discounts/active');
+                activeDiscounts = await discRes.json();
+
+                // Filter: discounts on products user has bought before
+                const myDeals = activeDiscounts.filter(d => historyProductIds.includes(d.product.id));
+
+                const container = document.getElementById('deals-list');
+                if (myDeals.length === 0) {
+                    container.innerHTML = '<p class="text-gray-400">Одоогоор таны авдаг бараанд хямдрал алга.</p>';
+                    return;
+                }
+
+                container.innerHTML = myDeals.map(d => {
+                    const histItem = history.find(h => h.product.id === d.product.id);
+                    return `
+                        <div class="flex items-center gap-3 p-4 bg-gradient-to-r from-red-50 to-orange-50 border border-red-100 rounded-xl">
+                            <div class="bg-red-600 text-white text-xs font-bold px-2 py-1 rounded-lg shrink-0">
+                                -${d.discountPercent}%
+                            </div>
+                            <div class="flex-1 min-w-0">
+                                <div class="font-bold text-sm">${d.product.name}</div>
+                                <div class="text-xs text-gray-500">
+                                    ${d.store.name} · 
+                                    <span class="line-through">${d.product.price.toLocaleString()}₮</span> → 
+                                    <span class="text-red-600 font-bold">${d.discountedPrice.toLocaleString()}₮</span>
+                                </div>
+                                <div class="text-[10px] text-gray-400">Та ${histItem ? histItem.count : '?'} удаа авсан</div>
+                            </div>
+                            <button onclick="addToBasket(${d.product.id}, '${d.product.name.replace(/'/g, "\\'")}', ${d.discountedPrice})" class="bg-red-600 text-white px-3 py-2 rounded-lg text-xs font-bold hover:bg-red-700 transition shrink-0">
+                                🔥 Авах
+                            </button>
+                        </div>
+                    `;
+                }).join('');
+            } catch(e) { console.error(e); }
+        }
+
+        // ─── NEARBY BUTTON (simulates geofence trigger) ───
+        async function triggerNearby() {
+            const btn = document.getElementById('nearby-btn');
+            btn.innerText = '⏳ Хайж байна...';
+            btn.disabled = true;
+
+            try {
+                const res = await fetch('/recommendations/generate', {
+                    method: 'POST',
+                    headers: { 'Content-Type': 'application/json' },
+                    body: JSON.stringify({
+                        userId,
+                        latitude: mockLocation.lat,
+                        longitude: mockLocation.lon,
+                        currentBasket: basket.map(b => b.id)
+                    })
+                });
+                const data = await res.json();
+
+                const container = document.getElementById('nearby-results');
+                if (!data.scoredProducts || data.scoredProducts.length === 0) {
+                    container.innerHTML = '<p class="text-gray-400">Ойрхон хямдрал олдсонгүй.</p>';
+                } else {
+                    container.innerHTML = `
+                        <div class="text-xs text-gray-500 mb-3">${data.nearbyStoresCount} дэлгүүр олдлоо (500м дотор)</div>
+                        ${data.scoredProducts.map(r => `
+                            <div class="flex items-center gap-3 p-3 border rounded-xl hover:bg-gray-50">
+                                <div class="flex-1 min-w-0">
+                                    <div class="font-bold text-sm">${r.product.name}</div>
+                                    <div class="text-xs text-gray-500">${r.reason}</div>
+                                    <div class="text-xs mt-1">
+                                        <span class="text-red-600 font-bold">${r.discount.discountPercent}% OFF</span> · 
+                                        <span class="text-gray-400">${r.storeDistance}м</span> · 
+                                        ${r.discount.store.name}
+                                    </div>
+                                </div>
+                                <button onclick="addToBasket(${r.product.id}, '${r.product.name.replace(/'/g, "\\'")}', ${r.product.price}); closeNearby();" class="bg-green-600 text-white px-3 py-1.5 rounded-lg text-xs font-bold hover:bg-green-700 transition shrink-0">
+                                    Авах
+                                </button>
+                            </div>
+                        `).join('')}
+                    `;
+                }
+
+                document.getElementById('nearby-modal').classList.remove('hidden');
+            } catch(e) {
+                console.error(e);
+                alert('Алдаа гарлаа');
+            } finally {
+                btn.innerText = '📍 Ойрхон байна';
+                btn.disabled = false;
+            }
+        }
+
+        function closeNearby() {
+            document.getElementById('nearby-modal').classList.add('hidden');
+        }
+
+        // ─── BASKET ───
+        function addToBasket(id, name, price) {
+            const existing = basket.find(item => item.id === id);
+            if (existing) {
+                existing.quantity++;
+            } else {
+                basket.push({ id, name, price, quantity: 1 });
+            }
+            updateBasketUI();
+            // Show a quick toast
+            showToast(`✓ ${name} сагсанд нэмэгдлээ`);
+        }
+
+        function updateBasketUI() {
+            const count = basket.reduce((sum, item) => sum + item.quantity, 0);
+            const badge = document.getElementById('basket-count');
+            badge.innerText = count;
+            badge.classList.toggle('hidden', count === 0);
+
+            const container = document.getElementById('basket-items');
+            if (basket.length === 0) {
+                container.innerHTML = '<p class="text-gray-400 text-center py-4">Сагс хоосон байна.</p>';
+            } else {
+                container.innerHTML = basket.map(item => `
+                    <div class="flex justify-between items-center p-2 bg-gray-50 rounded-lg">
+                        <div>
+                            <div class="font-bold text-sm">${item.name}</div>
+                            <div class="text-xs text-gray-500">${item.price.toLocaleString()} ₮ x ${item.quantity}</div>
+                        </div>
+                        <div class="flex items-center gap-2">
+                            <span class="font-bold text-sm">${(item.price * item.quantity).toLocaleString()} ₮</span>
+                            <button onclick="removeFromBasket(${item.id})" class="text-red-400 hover:text-red-600 text-xs">✕</button>
+                        </div>
+                    </div>
+                `).join('');
+            }
+
+            const total = basket.reduce((sum, item) => sum + (item.price * item.quantity), 0);
+            document.getElementById('basket-total').innerText = `${total.toLocaleString()} ₮`;
+        }
+
+        function removeFromBasket(id) {
+            basket = basket.filter(item => item.id !== id);
+            updateBasketUI();
+        }
+
+        function toggleBasket() {
+            document.getElementById('basket-modal').classList.toggle('hidden');
+        }
+
+        // ─── CHECKOUT ───
+        async function checkout() {
+            if (basket.length === 0) return alert('Сагс хоосон байна!');
+            try {
+                const res = await fetch('/orders', {
+                    method: 'POST',
+                    headers: { 'Content-Type': 'application/json' },
+                    body: JSON.stringify({
+                        userId,
+                        items: basket.map(b => ({ productId: b.id, quantity: b.quantity }))
+                    })
+                });
+                if (res.ok) {
+                    showToast('✓ Захиалга амжилттай!');
+                    basket = [];
+                    updateBasketUI();
+                    toggleBasket();
+                    fetchRecommendations();
+                    fetchHistory();
+                    fetchMyDeals();
+                }
+            } catch (e) {
+                alert('Алдаа гарлаа.');
+            }
+        }
+
+        // ─── TOAST ───
+        function showToast(msg) {
+            const toast = document.createElement('div');
+            toast.className = 'fixed bottom-4 right-4 bg-gray-800 text-white px-4 py-2 rounded-xl shadow-lg text-sm z-[100] animate-pulse';
+            toast.innerText = msg;
+            document.body.appendChild(toast);
+            setTimeout(() => toast.remove(), 2000);
+        }
+
+        // ─── CHATBOT ───
+        const chatForm = document.getElementById('chat-form');
+        const chatInput = document.getElementById('chat-input');
+        const chatWindow = document.getElementById('chat-window');
+        const chatSuggestions = document.getElementById('chat-suggestions');
+
+        chatForm.onsubmit = async (e) => {
+            e.preventDefault();
+            const msg = chatInput.value.trim();
+            if (!msg) return;
+
+            appendMessage('user', msg);
+            chatInput.value = '';
+            const loadingId = 'loading-' + Date.now();
+            appendMessage('ai', 'Түр хүлээнэ үү...', loadingId);
+
+            try {
+                const res = await fetch('/ai/chat', {
+                    method: 'POST',
+                    headers: { 'Content-Type': 'application/json' },
+                    body: JSON.stringify({
+                        userId,
+                        message: msg,
+                        currentBasket: basket.map(b => b.id)
+                    })
+                });
+                const data = await res.json();
+                document.getElementById(loadingId)?.remove();
+
+                appendMessage('ai', data.response);
+
+                // Show buy buttons for suggested products
+                if (data.suggestedProducts && data.suggestedProducts.length > 0) {
+                    chatSuggestions.innerHTML = data.suggestedProducts.map(p => `
+                        <button onclick="addToBasket(${p.id}, '${p.name.replace(/'/g, "\\'")}', ${p.price})" class="text-[10px] bg-green-50 border border-green-200 text-green-700 px-2 py-1 rounded-lg hover:bg-green-100 font-bold">
+                            🛒 ${p.name} (${p.price.toLocaleString()}₮)
+                        </button>
+                    `).join('');
+                } else {
+                    chatSuggestions.innerHTML = '';
+                }
+            } catch (e) {
+                const el = document.getElementById(loadingId);
+                if (el) el.innerText = 'Алдаа гарлаа. Дахин оролдоно уу.';
+            }
+        };
+
+        function appendMessage(role, text, id = null) {
+            if (!text && !id) return;
+            const div = document.createElement('div');
+            if (id) div.id = id;
+            div.className = role === 'user'
+                ? 'bg-blue-600 text-white p-2.5 rounded-lg shadow-sm ml-8 text-sm'
+                : 'bg-white p-2.5 rounded-lg shadow-sm border border-gray-100 mr-8 text-sm whitespace-pre-wrap';
+            div.innerText = text || '...';
+            chatWindow.appendChild(div);
+            chatWindow.scrollTop = chatWindow.scrollHeight;
+        }
+
+        function clearChat() {
+            chatWindow.innerHTML = `
+                <div class="bg-white p-3 rounded-lg shadow-sm border border-gray-100">
+                    Сайн байна уу! Би таны худалдан авалтын туслах. Юу авах вэ?
+                </div>
+            `;
+            chatSuggestions.innerHTML = '';
+        }
+
+        init();
+    </script>
+</body>
+</html>
