@@ -46,7 +46,13 @@ export class AiController {
     });
 
     const nearbyDiscounts = activeDiscounts.map(
-      (d) => `[ID: ${d.product.id}] ${d.product.name} (${d.product.category}) ${d.discountPercent}% off at ${d.store.name}`,
+      (d) => `[ID: ${d.product.id}] ${d.product.name} (${d.product.category}) ${d.discountPercent}% off at ${d.store.name} - ${d.discountedPrice}₮`,
+    );
+
+    // Also get all available products so AI knows what we sell
+    const allProducts = await this.prisma.product.findMany();
+    const productList = allProducts.map(
+      (p) => `[ID: ${p.id}] ${p.name} (${p.category}) ${p.price}₮`,
     );
 
     const basketProducts = currentBasket.length
@@ -62,6 +68,7 @@ export class AiController {
       purchaseHistory,
       basketNames,
       nearbyDiscounts,
+      productList,
     );
 
     const suggestedProducts = result.suggestedProductIds.length
@@ -72,8 +79,8 @@ export class AiController {
 
     let responseWithTotal = result.response;
     if (suggestedProducts.length > 0) {
-      const total = suggestedProducts.reduce((sum, p) => sum + p.price, 0);
-      responseWithTotal += `\n\n💰 Эдгээр барааны нийт үнэ: ${total} ₮. Танд өөр авах зүйл байна уу?`;
+      const total = Math.round(suggestedProducts.reduce((sum, p) => sum + p.price, 0));
+      responseWithTotal += `\n\n💰 Нийт: ${total.toLocaleString()} ₮`;
     }
 
     return {
