@@ -143,31 +143,97 @@ Rules:
     }
     const model = this.config.get('LM_STUDIO_MODEL') || 'mistral-7b-instruct';
 
+    // ─── STEP 1: Ask AI what categories are needed ───
+    const categorizationPrompt = `You are a shopping assistant. The user wants to buy or cook something.
+Determine which product CATEGORIES they need. Return ONLY a JSON array of category names.
+
+Available categories: Drinks, Snacks, Instant Food, Alcohol, Household, Dairy, Meat, Bakery, Vegetables, Frozen, Cooking, Sauce
+
+Examples:
+- "банштай шөл хиймээр" → ["Meat", "Cooking", "Vegetables"]
+- "fried chicken" → ["Meat", "Cooking", "Dairy"]
+- "party хийх гэж байна" → ["Drinks", "Snacks", "Alcohol"]
+- "цуйван хиймээр" → ["Meat", "Cooking", "Vegetables"]
+- "зүгээр л snack авмаар" → ["Snacks", "Drinks"]
+
+Return ONLY the JSON array, nothing else.`;
+
+    let relevantCategories: string[] = [];
+    try {
+      this.logger.log('Step 1: Determining needed categories...');
+      const catResponse = await fetch(`${baseUrl}/chat/completions`, {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({
+          model,
+          max_tokens: 256,
+          temperature: 0.1,
+          messages: [
+            { role: 'system', content: categorizationPrompt },
+            { role: 'user', content: message },
+          ],
+        }),
+      });
+
+      if (catResponse.ok) {
+        const catData = await catResponse.json();
+        const catMsg = catData.choices?.[0]?.message;
+        let catText = catMsg?.content || '';
+        if (!catText && catMsg?.reasoning_content) {
+          const match = catMsg.reasoning_content.match(/\[[\s\S]*?\]/);
+          catText = match ? match[0] : '';
+        }
+        // Clean and parse
+        catText = catText.replace(/<think>[\s\S]*?<\/think>/gi, '').trim();
+        catText = catText.replace(/```json|```/g, '').trim();
+        const arrMatch = catText.match(/\[[\s\S]*?\]/);
+        if (arrMatch) {
+          relevantCategories = JSON.parse(arrMatch[0]);
+          this.logger.log(`Categories identified: ${relevantCategories.join(', ')}`);
+        }
+      }
+    } catch (e) {
+      this.logger.warn(`Category detection failed: ${e.message}, using all products`);
+    }
+
+    // ─── STEP 2: Filter products by relevant categories ───
+    const filteredProducts = relevantCategories.length > 0
+      ? availableProducts.filter(p => {
+          const lower = p.toLowerCase();
+          return relevantCategories.some(cat => lower.includes(`(${cat.toLowerCase()})`));
+        })
+      : availableProducts.slice(0, 15); // fallback: send first 15
+
+    this.logger.log(`Sending ${filteredProducts.length} relevant products to AI (from ${availableProducts.length} total)`);
+
+    // ─── STEP 3: Final response with only relevant products ───
     const systemPrompt = `Та бол супермаркетын туслах. БОГИНО, ТОДОРХОЙ хариулна уу.
 
 ДҮРЭМ:
 - Монгол хэлээр хариулна (Кирилл болон латин аль алинаар ойлгоно).
 - Хариулт 3-6 мөрөөс ХЭТРЭХГҮЙ.
-- Хэрэглэгч хоол хийх гэж байвал тухайн хоолны БҮХ ОРЦУУДЫГ бодож, дэлгүүрт байгаа бараанаас тохирохыг санал болго.
+- Хэрэглэгч хоол хийх гэж байвал тухайн хоолны ОРЦУУДЫГ бодож, доорх жагсаалтаас тохирохыг санал болго.
 - Монгол хоолны мэдлэг:
-  • Банш/Бууз/Хуушуур = Гурил + Үхрийн мах/Хонины мах + Сонгино + Давс (Chicken биш!)
+  • Банш/Бууз/Хуушуур = Гурил + Үхрийн мах/Хонины мах + Сонгино + Давс
   • Цуйван = Гоймон + Үхрийн мах/Хонины мах + Төмс + Сонгино + Лууван + Тос
-  • Шөлтэй хоол = Мах (үхэр/хонь) + Төмс + Лууван + Сонгино + Давс
-  • Тахианы мах зөвхөн тахиатай холбоотой хоолонд (жишээ: тахианы шөл)
-- Хэрэв бэлэн хоол (frozen buuz, bansh) болон гараар хийх орц ХОЁУЛАА байвал, ХОЁУЛАНГ нь санал болго.
-- Хэрэв хэрэглэгчийн хүссэн бараа БАЙХГҮЙ бол шударгаар хэлээд, байгаа зүйлээс ойрыг санал болго.
+  • Шарсан тахиа = Тахианы мах + Гурил + Өндөг + Тос + Давс
+- Хэрэв бэлэн хоол (frozen) болон гараар хийх орц ХОЁУЛАА байвал, хоёуланг нь санал болго.
+- Хэрэв хэрэглэгчийн хүссэн бараа БАЙХГҮЙ бол шударгаар хэл.
 - Бараа бүрийг: "• Нэр - Үнэ₮" форматаар бич.
 - Нийт үнийг бүхэл тоогоор хэл.
-- Төгсгөлд ЗААВАЛ [IDS: 1, 2, 3] формат оруул (санал болгосон бүх барааны ID).
+- ЧУХАЛ: Санал болгосон БҮХ барааны ID-г [IDS: ...] дотор оруул. Нэг ч бараа орхигдуулахгүй!
+  Жишээ: 5 бараа санал болговол → [IDS: 16, 28, 15, 26, 27] (5 ID байх ёстой)
+
+Боломжит бараа:
+${filteredProducts.join('\n')}
 
 Нөхцөл:
 - Түүх: ${purchaseHistory.join(', ')}
 - Сагс: ${currentBasket.join(', ')}
-- Хямдрал: ${nearbyDiscounts.join(', ')}
-- Бүх бараа: ${availableProducts.join(', ')}`;
+- Хямдрал: ${nearbyDiscounts.join(', ')}`;
 
     try {
-      this.logger.log(`Calling LM Studio for chat at ${baseUrl}`);
+      this.logger.log(`Step 3: Calling LM Studio for final chat response`);
       this.logger.debug(`User Message: ${message}`);
 
       const response = await fetch(`${baseUrl}/chat/completions`, {

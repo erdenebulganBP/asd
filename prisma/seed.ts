@@ -123,6 +123,12 @@ async function main() {
     }
   }
 
+  // Reset auto-increment sequences to avoid conflicts
+  const maxOrderId = Math.max(...orders.map(o => o.id));
+  const maxItemId = Math.max(...orders.flatMap(o => o.items.map(i => i.id)));
+  await prisma.$executeRawUnsafe(`ALTER SEQUENCE "Order_id_seq" RESTART WITH ${maxOrderId + 1}`);
+  await prisma.$executeRawUnsafe(`ALTER SEQUENCE "OrderItem_id_seq" RESTART WITH ${maxItemId + 1}`);
+
   console.log('✅ Expanded data seeded!');
 }
 
